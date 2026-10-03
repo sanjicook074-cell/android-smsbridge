@@ -17,7 +17,7 @@
 //   也接受纯文本 body，或 form-urlencoded 的 text=...&from=...
 
 import { createServer, get as httpGet } from 'node:http';
-import { appendFileSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { appendFileSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
@@ -26,7 +26,13 @@ import { randomBytes } from 'node:crypto';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TOKEN_FILE = join(ROOT, '.smsbridge_token');
 const OUT_FILE = join(ROOT, 'last_code.json');
-const LOG_FILE = join(ROOT, 'server', 'sms_hub.log');
+const LOG_DIR = join(ROOT, 'server');
+const LOG_FILE = join(LOG_DIR, 'sms_hub.log');
+
+// 日志目录不保证存在（脚本被单独拷出来用时就没有 server/），不存在就建一个。
+// 否则 appendFileSync 每次都抛、被下面的 try/catch 静默吃掉 —— 表现为「只有打屏、没有日志文件」，
+// 排查时最需要日志的时候偏偏找不到它。
+try { mkdirSync(LOG_DIR, { recursive: true }); } catch { /* 建不出来也照常跑，日志至少还在屏幕上 */ }
 
 const argv = process.argv.slice(2);
 const opt = { port: 8800, token: '' };
