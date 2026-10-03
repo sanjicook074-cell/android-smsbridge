@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  短信桥 —— 极简短信转发。
+
+  刻意的取舍（相对 SmsForwarder）：
+    · 没有「发送通道」和「转发规则」两层概念 —— 就一个动作：收到短信就发出去。
+    · 没有匹配条件、没有正则、没有模板占位符 —— 短信原文直接作为 body 发过去。
+    · 令牌编译进包，用户不用填。
+    · 只留一个可改项：电脑的 IP:端口（换网络时才动）。
+
+  ⚠ usesCleartextTraffic 必须为 true：Android 9+ 默认禁明文 HTTP，
+     而我们的目标是局域网里的 http://192.168.x.x:8800。
+     注意 networkSecurityConfig **会覆盖** usesCleartextTraffic（不是叠加），
+     所以两个都写上：真正生效的是 NSC 里那条 cleartextTrafficPermitted="true"，
+     usesCleartextTraffic 只是给不认 NSC 的老系统兜底。实测两者都在包内 ✔
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.smsbridge">
+
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33" />
+
+    <!--
+      两个短信权限，对应**两条通道**（见 Inbox.java 顶部注释）：
+
+        RECEIVE_SMS → 走 SMS_RECEIVED 广播：App 没打开也能收到，是主路。
+        READ_SMS    → 直读 content://sms/inbox：完全不依赖广播投递，是备路。
+
+      为什么非要备路：小米/红米的「免费网络短信」走网络、压根不是运营商短信，
+      不触发任何短信广播；某些 ROM 也会静默过滤广播（权限全绿照样收不到）。
+      两条通道都开着，还可以互相印证 —— 哪条通了、哪条没通，日志里一目了然。
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      申请「忽略电池优化」。用途只有一个：手机息屏闲置一段时间后，
+      小米/华为的省电策略会把 App（连通知监听服务）冻掉或回收，
+      转发就静默停了。有了这条，可以在系统弹窗上直接选「不允许优化/无限制」。
+
+      ⚠ 这个权限 Google Play 有政策限制（只允许特定品类），但我们不发布到商店、
+        纯本机侧载，用它是正当的：App 的功能就是「长期在线待命接收转发」，
+        不允许被冻结是这个功能的必要条件，不是为了多占后台。
+    -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:label="短信桥"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <activity
+            android:name=".MainActivity"
+            android:label="短信桥"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          静态注册（写在 manifest 里），所以 App 没打开也能收到短信。
+          SMS_RECEIVED 属于 Android 8.0 隐式广播限制的**豁免名单**，静态注册有效。
+
+          ★ 这里**绝不能**写 android:permission="android.permission.BROADCAST_SMS"
+            （2026-10-03 实测踩坑，查了很久）：
+            这个属性和 <uses-permission> 不是一回事 —— 它的含义是
+            「**发广播的那一方**必须持有 BROADCAST_SMS」。而 BROADCAST_SMS 是
+            signature 级权限，只有平台签名的进程才有。厂商 ROM 里发短信广播的
+            往往不是平台签名的组件（各家自研的电话/短信模块），于是广播被
+            **静默过滤**：不报错、不崩溃、App 里一点痕迹都没有，就是收不到。
+            我当初是从 AOSP 自带的系统短信应用抄来的 —— 它自己是系统签名，
+            所以那样写没事；第三方 App 照抄就是给自己下绊子。
+
+            想挡伪造广播也不需要它：SMS_RECEIVED 是 protected-broadcast，
+            普通 App 根本发不出来。所以这一行删掉才对。
+        -->
+        <receiver
+            android:name=".SmsReceiver"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          通知通道（第三条路，见 NotifListener.java）。
+
+          ★ 这里的 android:permission 是**必需的、正确的**：
+            它管的是「谁能 bind 我这个 Service」，而只有系统进程持有
+            BIND_NOTIFICATION_LISTENER_SERVICE —— 这正是我们要的。
+            跟上面 receiver 那个 BROADCAST_SMS（管"谁能给我发广播"）方向相反，
+            别把两者搞混。少写这一行，系统反而绑不上。
+
+          exported=true 也是必需的：系统是"外部调用者"。
+        -->
+        <service
+            android:name=".NotifListener"
+            android:label="短信桥"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+    </application>
+</manifest>

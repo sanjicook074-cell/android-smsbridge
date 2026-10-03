@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  明文 HTTP 放行。
+
+  为什么要单独写这个文件，而不是只靠 manifest 里的 usesCleartextTraffic：
+    · Android 9（API 28）起 cleartext 默认被禁；
+    · 更麻烦的是，一旦应用挂了 networkSecurityConfig，manifest 里的
+      usesCleartextTraffic **就会被忽略**，一切都以本文件为准。
+    · 我们的目标恰恰是局域网里的 http://192.168.x.x:8800，
+      所以这里必须显式放行，而且要和 manifest 里那个属性保持一致
+      （两个都写，是 SmsForwarder 之类成熟 App 的通行做法 —— 免得哪天
+      被哪个字段的覆盖规则坑掉）。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

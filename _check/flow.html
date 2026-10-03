@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>短信桥 · 数据流</title>
+<style>
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 980px; height: 502px; background: #f7f8fa; color: #1c1f23;
+    font: 14px/1.55 "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+    padding: 26px 28px;
+  }
+  h1 { font-size: 17px; margin: 0 0 3px; font-weight: 600; letter-spacing: .2px; }
+  .sub { font-size: 12.5px; color: #646a73; margin-bottom: 20px; }
+
+  .stage { display: flex; align-items: stretch; gap: 0; }
+
+  .panel {
+    border: 1px solid #e3e5e8; border-radius: 12px; background: #fff; padding: 16px 16px 14px;
+  }
+  .phone { width: 372px; }
+  .pc { width: 300px; }
+  .panel h2 {
+    font-size: 13px; margin: 0 0 12px; color: #646a73; font-weight: 600;
+    letter-spacing: .3px;
+  }
+
+  .ch {
+    display: flex; gap: 10px; padding: 9px 10px; border-radius: 8px; margin-bottom: 8px;
+    background: #fafbfc; border: 1px solid #eceef1;
+  }
+  .ch:last-child { margin-bottom: 0; }
+  .ch.on { background: #eef5ff; border-color: #c9dcff; }
+  .n {
+    flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: #dfe3e8;
+    color: #3c4043; font-size: 11.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .ch.on .n { background: #236dff; color: #fff; }
+  .ch .t { font-size: 13.5px; font-weight: 600; }
+  .ch .d { font-size: 11.5px; color: #646a73; margin-top: 2px; line-height: 1.5; }
+
+  .mid { flex: 1; display: flex; flex-direction: column; align-items: center;
+         justify-content: center; padding: 0 14px; }
+  .mid .arrow { font-size: 26px; color: #236dff; line-height: 1; }
+  .mid .wire { width: 2px; height: 26px; background: linear-gradient(#236dff, #c9dcff); margin: 4px 0; }
+  .mid .cap { font-size: 11.5px; color: #646a73; text-align: center; margin-top: 8px; line-height: 1.6; }
+  .mid code { background: #eef1f5; border-radius: 4px; padding: 1px 5px; font-size: 11px;
+              font-family: Consolas, "Courier New", monospace; color: #1c1f23; }
+
+  .pc .step { display: flex; gap: 9px; margin-bottom: 9px; align-items: flex-start; }
+  .pc .step:last-child { margin-bottom: 0; }
+  .dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: #236dff; margin-top: 7px; }
+  .pc .step .t { font-size: 13px; font-weight: 600; }
+  .pc .step .d { font-size: 11.5px; color: #646a73; line-height: 1.5; }
+
+  .foot {
+    margin-top: 16px; padding: 10px 13px; border-radius: 9px;
+    background: #fff; border: 1px solid #e3e5e8;
+    font-size: 12.5px; color: #3c4043; display: flex; gap: 22px; flex-wrap: wrap;
+  }
+  .foot b { color: #1c1f23; }
+  .k { color: #236dff; font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <h1>短信桥 · 手机 → 电脑 的数据流</h1>
+  <div class="sub">三条读取通道并行跑，互不冲突；出口统一去重，所以电脑端永远只收到一份。</div>
+
+  <div class="stage">
+
+    <div class="panel phone">
+      <h2>手机 · 短信桥</h2>
+
+      <div class="ch">
+        <div class="n">1</div>
+        <div>
+          <div class="t">SMS_RECEIVED 广播</div>
+          <div class="d">主路。App 没打开也能收到。部分 ROM 会静默过滤。</div>
+        </div>
+      </div>
+
+      <div class="ch">
+        <div class="n">2</div>
+        <div>
+          <div class="t">直读 content://sms/inbox</div>
+          <div class="d">备路。完全不依赖广播投递，专治广播被拦。</div>
+        </div>
+      </div>
+
+      <div class="ch on">
+        <div class="n">3</div>
+        <div>
+          <div class="t">通知监听 Service</div>
+          <div class="d">最稳。厂商「免费网络短信」走网络、不发广播也不进短信库，只有这条捞得到；且被系统绑定，清后台会被重新拉起。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mid">
+      <div class="wire"></div>
+      <div class="arrow">→</div>
+      <div class="wire"></div>
+      <div class="cap">
+        POST<br>
+        <code>{"text":"…","from":"1069"}</code>
+      </div>
+    </div>
+
+    <div class="panel pc">
+      <h2>电脑 · sms_hub.mjs</h2>
+
+      <div class="step">
+        <div class="dot"></div>
+        <div>
+          <div class="t">令牌校验</div>
+          <div class="d">局域网公开端口，错令牌一律 401</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot"></div>
+        <div>
+          <div class="t">抽验证码</div>
+          <div class="d">只认带锚点的：宁可不填，不可填错</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot"></div>
+        <div>
+          <div class="t">打屏 + 落盘</div>
+          <div class="d">控制台 / 日志 / last_code.json</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <span><b>去重：</b><span class="k">10 秒</span>内同一条只真正发一次</span>
+    <span><b>控制报文：</b>诊断信息不参与抽码</span>
+    <span><b>时间戳：</b>一律用<span class="k">服务器时间</span>，不用手机时钟</span>
+  </div>
+
+</body>
+</html>

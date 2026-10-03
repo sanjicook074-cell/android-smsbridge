@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>短信桥 · 界面还原</title>
+<!--
+  这不是真机截图，是照着 MainActivity.java 里的控件与文案 1:1 还原的界面示意图。
+  演示数据全是虚构的：号码用服务号 1069、验证码用顺子 741852、平台名用「某某网」。
+-->
+<style>
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 393px; min-height: 851px; background: #fff; color: #1f1f1f;
+    font: 14px/1.5 "Segoe UI", "Microsoft YaHei UI", Roboto, system-ui, sans-serif;
+    padding: 18px;
+  }
+  h1 { font-size: 24px; font-weight: 400; margin: 0; letter-spacing: .2px; }
+  .sub { font-size: 13px; color: #5f6368; margin-top: 3px; }
+  .label { font-size: 13px; color: #444; margin: 14px 0 2px; }
+
+  /* 原生 EditText：底部一条下划线 */
+  .edit {
+    border-bottom: 2px solid #1a73e8; padding: 5px 0 6px;
+    font-size: 14px; color: #1f1f1f;
+  }
+  /* 原生 Button：淡灰底、圆角、居中 */
+  .btn {
+    display: block; width: 100%; margin-top: 14px; padding: 11px 0; text-align: center;
+    background: #eeeeee; border: none; border-radius: 4px;
+    font-size: 14px; color: #1f1f1f; letter-spacing: .2px;
+  }
+  .btn.done { background: #d7ead9; color: #2e5c37; }
+  .btn + .btn { margin-top: 8px; }
+  .row { display: flex; gap: 8px; margin-top: 8px; }
+  .row .btn { margin-top: 0; }
+
+  .status { font-size: 14px; margin-top: 18px; white-space: pre-wrap; line-height: 1.6; }
+  .log, .diag { font-size: 12px; margin-top: 16px; white-space: pre-wrap;
+                line-height: 1.55; color: #202124; }
+  .diag { color: #3c4043; word-break: break-all; }
+  .tip { font-size: 12px; color: #3c4043; margin-top: 16px; white-space: pre-wrap; line-height: 1.6; }
+  .ok { color: #0f7b34; }
+  .arrow { color: #1a73e8; }
+</style>
+</head>
+<body>
+
+  <h1>短信桥</h1>
+  <div class="sub">手机收到短信 → 自动送到电脑</div>
+
+  <div class="label">电脑地址（IP:端口）</div>
+  <div class="edit">192.168.1.100:8800</div>
+
+  <button class="btn done">① 已允许读取短信 ✔</button>
+  <button class="btn done">② 通知读权已开启 ✔</button>
+  <button class="btn done">③ 后台常驻已允许 ✔</button>
+
+  <div class="row">
+    <button class="btn" style="flex:1">保存地址</button>
+    <button class="btn" style="flex:1">发条测试</button>
+  </div>
+
+  <div class="status">短信权限：广播=有 ✔  收件箱=有 ✔
+通知读权：已开启 ✔
+后台常驻：已允许 ✔
+电脑地址：192.168.1.100:8800
+收件箱最新：10-03 20:11:32  【某某网】验证码 741852…
+最近转发：已送达 ✔ 20:11:32</div>
+
+  <div class="log">收到的短信：
+20:11:32 ✔ 通知通道已连接（此后手机在后台也能转发）
+20:11:33 已挂上前台动态接收器（双保险）
+20:11:33 收件箱通道就绪（现存最近一条：您有一笔新的…
+20:12:05 [通知·mms] 【某某网】验证码 741852，5分钟…
+20:12:05    ✓ 已送达 20:12:05
+20:12:07 ▼ 收到广播 android.provider.Telephony.S…
+20:12:07      [1069] 【某某网】验证码 741852，5分钟…
+20:12:07    ↺ 重复（10 秒内同一条），已跳过</div>
+
+  <div class="diag">诊断 Android 14/API 34 | RECEIVE_SMS=GRANTED | READ_SMS=GRANTED | 通知读权=ON | 电池优化=已豁免 | AppOps.receive_sms=ALLOWED(0)✔ | 接收组件=1(0默认1启用2禁用) | 系统内注册此广播=6个,本机在列=是 | 默认短信App=com.android.mms | 收件箱最近3条=[10-03 20:11:32 1069 【某某网】验证码 7418…]</div>
+
+  <div class="tip">装上之后三步，都点一下就行：
+① 允许读取短信（一个弹窗里两个权限，都允许）
+② 开启通知读取 → 在跳出的列表里找到「短信桥」并打开
+③ 允许后台常驻 → 系统问「是否允许始终在后台运行」时选允许
+
+前两步是三条互相独立的通道，多开不冲突：
+   广播 / 直读收件箱 / 读通知。哪条通了日志里一眼能看出来。
+
+★ 「② 通知读取」是最稳的一条：它连厂商的「免费网络短信」都能捞到
+（那种消息走网络、不是运营商短信，既不进短信库也不发短信广播），
+而且它是系统绑定的服务，App 被清理后台也会被系统重新拉起。</div>
+
+</body>
+</html>

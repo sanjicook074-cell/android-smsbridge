@@ -1,0 +1,28 @@
+# ── 编译产物 ──
+# build/gen/ 下的 .java 是 build.sh 从 src/ 复制并**替换掉 __TOKEN__** 的副本，
+# 也就是里面带着真令牌。整个 build/ 必须挡住。
+build/
+*.apk
+*.idsig
+
+# ── 签名密钥 ──
+# 私钥泄露 = 任何人都能签出「同一个 App 的更新」。绝不入库。
+keystore.jks
+*.jks
+*.keystore
+
+# ── 令牌 ──
+# 收码服务的访问令牌，编译时被烧进 APK。绝不入库。
+.smsbridge_token
+sms_token.txt
+
+# ── 收码服务运行时产物 ──
+last_code.json
+server/*.log
+
+# ── 编辑器 / 系统 ──
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+__pycache__/
